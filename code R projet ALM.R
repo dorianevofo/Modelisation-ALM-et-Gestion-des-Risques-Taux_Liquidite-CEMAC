@@ -28,7 +28,7 @@
 ## ÉTAPE 0 — INSTALLATION DES PACKAGES & CHARGEMENT DES DONNÉES
 ################################################################################
 
-# ─── 0.1 Installation automatique si besoin ────────────────────────────────
+# ─── 0.1 Installation des libraairies────────────────────────────────
 
 packages_requis <- c(
   "readxl",      # Import des fichiers Excel
@@ -57,11 +57,10 @@ if (length(nouveaux) > 0) {
 suppressPackageStartupMessages({
   lapply(packages_requis, library, character.only = TRUE)
 })
-cat("✔ Tous les packages sont chargés.\n\n")
+cat(" Tous les packages sont chargés.\n\n")
 
 # ─── 0.2 Chargement de la Data Room ────────────────────────────────────────
 
-# Adapter ces chemins si vos fichiers sont dans un sous-dossier
 FICHIER_ACTIF_PASSIF <- "SUIVI_PORTEFEUILLES_ACTIF PASSIF_2025.xlsx"
 FICHIER_TMP          <- "TMP_COMPLET_FINAL.xlsx"
 
@@ -120,7 +119,7 @@ tmp_long$Date <- as.Date(as.numeric(tmp_long$Date_adj), origin = "1899-12-30")
 tmp_long$TMP  <- as.numeric(tmp_long$TMP_pct)
 tmp_long      <- tmp_long[!is.na(tmp_long$TMP) & !is.na(tmp_long$Date), ]
 
-cat("✔ Données chargées :\n")
+cat(" Données chargées :\n")
 cat("  - Actif          :", nrow(actif), "lignes obligataires\n")
 cat("  - Passif         :", nrow(passif_df), "semaines de VL\n")
 cat("  - TMP (marché)   :", nrow(tmp_long), "observations\n\n")
@@ -165,7 +164,7 @@ cat("\n  Vérification COSUMAF (limite 35% par émetteur) :\n")
 for (i in seq_len(nrow(resume_emetteur))) {
   poids <- resume_emetteur$Poids_pct[i]
   em    <- resume_emetteur$Emetteur_clean[i]
-  flag  <- if (poids > limite_cosumaf) "⚠️  ALERTE" else "✔ Conforme"
+  flag  <- if (poids > limite_cosumaf) "  ALERTE" else " Conforme"
   cat(sprintf("    %-30s : %5.1f%%  [%s]\n", em, poids, flag))
 }
 
@@ -300,10 +299,10 @@ df_plot <- data.frame(
 )
 
 g <- ggplot(df_plot, aes(x = Date)) +
-  geom_line(aes(y = Brut, colour = "Brut"),   linewidth = 0.8,  linetype = "dotted") + # Changed size to linewidth
-  geom_line(aes(y = MM3,  colour = "MM3"),    linewidth = 1.0,  na.rm = TRUE) + # Changed size to linewidth
-  geom_line(aes(y = MM5,  colour = "MM5"),    linewidth = 1.0,  na.rm = TRUE) + # Changed size to linewidth
-  geom_line(aes(y = Holt, colour = "Holt"),   linewidth = 1.2,  na.rm = TRUE) + # Changed size to linewidth
+  geom_line(aes(y = Brut, colour = "Brut"),   linewidth = 0.8,  linetype = "dotted") +
+  geom_line(aes(y = MM3,  colour = "MM3"),    linewidth = 1.0,  na.rm = TRUE) +
+  geom_line(aes(y = MM5,  colour = "MM5"),    linewidth = 1.0,  na.rm = TRUE) +
+  geom_line(aes(y = Holt, colour = "Holt"),   linewidth = 1.2,  na.rm = TRUE) + 
   scale_colour_manual(
     values = c("Brut" = "grey60", "MM3" = "steelblue",
                "MM5" = "tomato",  "Holt" = "darkgreen"),
@@ -411,7 +410,7 @@ if (length(graphiques_lissage) >= 4) {
 }
 
 
-# ─── 1.5 Courbe des taux lissée — Cameroun (snapshot actuel) ────────────────
+# ─── 1.5 Courbe des taux lissée — Cameroun ───────────────
 
 # Construction d'un snapshot de la courbe par maturité pour le Cameroun
 snapshot_cmr <- tmp_long %>%
@@ -451,13 +450,11 @@ g_courbe_cmr <- ggplot(snapshot_cmr, aes(x = Annees, y = TMP_recent)) +
   theme_minimal(base_size = 12)
 print(g_courbe_cmr)
 
-# Code R à insérer à la fin de votre ÉTAPE 1 pour sauvegarder les graphiques dans un PDF
 pdf(file = "Rapport_Lissage_Courbes_Taux.pdf", width = 11, height = 8.5) # Format Paysage
 
 # 1. Tracer le snapshot de la courbe globale du Cameroun
 print(g_courbe_cmr)
 
-# 2. Boucler sur tous les segments calculés pour exporter les graphiques de lissage
 for (nom_cle in names(graphiques_lissage)) {
   cat("Ajout du graphique au PDF :", nom_cle, "\n")
   print(graphiques_lissage[[nom_cle]])
@@ -505,18 +502,18 @@ list_onglets <- list(
 nom_fichier_excel <- "Donnees_Courbe_Taux_Lissees_R.xlsx"
 writexl::write_xlsx(list_onglets, path = nom_fichier_excel)
 
-cat(sprintf("✔ Fichier Excel exporté avec succès : '%s' (%d lignes de données).\n\n", 
+cat(sprintf(" Fichier Excel exporté avec succès : '%s' (%d lignes de données).\n\n", 
             nom_fichier_excel, nrow(donnees_excel_longue)))
 
 ################################################################################
 ## ÉTAPE 2 — ÉCONOMÉTRIE UNIVARIÉE : MODÈLES GARCH
 ##
 ##  Séquence obligatoire :
-##    1. Test de stationnarité ADF  → travailler sur r_t ou Δr_t
-##    2. Test d'effets ARCH          → justifier le GARCH
-##    3. Test de normalité JB        → choisir distribution Student-t
-##    4. Estimation GARCH(1,1)       → volatilité conditionnelle
-##    5. ARMA-GARCH sur flux passif  → modélisation des rachats
+##    1. Test de stationnarité ADF  : travailler sur r_t ou Δr_t
+##    2. Test d'effets ARCH          :  justifier le GARCH
+##    3. Test de normalité JB        :  choisir distribution Student-t
+##    4. Estimation GARCH(1,1)       : volatilité conditionnelle
+##    5. ARMA-GARCH sur flux passif  : modélisation des rachats
 ################################################################################
 
 cat("\n═══════════════════════════════════════════════════════\n")
@@ -546,12 +543,12 @@ pipeline_garch <- function(serie_df, label = "", dist_model = "std") {
   cat(sprintf("  ADF niveaux     : p = %.4f  %s\n",
               adf_niv$p.value,
               ifelse(is.na(adf_niv$p.value), "",
-                     ifelse(adf_niv$p.value < 0.05, "→ Stationnaire ✔",
+                     ifelse(adf_niv$p.value < 0.05, ": Stationnaire ",
                             "→ Racine unitaire — travail sur diff !"))))
   cat(sprintf("  ADF différences : p = %.4f  %s\n",
               adf_diff$p.value,
               ifelse(is.na(adf_diff$p.value), "",
-                     ifelse(adf_diff$p.value < 0.05, "→ Stationnaire ✔",
+                     ifelse(adf_diff$p.value < 0.05, ": Stationnaire ",
                             "→ Non stationnaire même en diff"))))
   
   # Choisir la série de travail
@@ -582,7 +579,7 @@ pipeline_garch <- function(serie_df, label = "", dist_model = "std") {
               lag_arch, arch_test$p.value,
               ifelse(is.na(arch_test$p.value), "",
                      ifelse(arch_test$p.value < 0.05,
-                            "→ Effets ARCH confirmés ✔ GARCH justifié",
+                            "→ Effets ARCH confirmés : GARCH justifié",
                             "→ Pas d'effets ARCH significatifs"))))
   
   # ── Test 4 : Normalité Jarque-Bera ──────────────────────────────────────
@@ -651,8 +648,8 @@ pipeline_garch <- function(serie_df, label = "", dist_model = "std") {
   cat(sprintf("    alpha+beta = %.4f  %s\n",
               persist,
               ifelse(is.na(persist), "",
-                     ifelse(persist < 1, "✔ Stationnaire",
-                            "⚠️  Non stationnaire !"))))
+                     ifelse(persist < 1, " Stationnaire",
+                            "  Non stationnaire !"))))
   if (!is.na(demi_vie))
     cat(sprintf("    Demi-vie volatilité = %.1f périodes\n", demi_vie))
   
@@ -910,7 +907,7 @@ for (paire in paires_analyse) {
   )
   
   n_obs <- nrow(merged_biv)
-  cat(sprintf("  → Nombre de trimestres communs exploitables : %d\n", n_obs))
+  cat(sprintf("  Nombre de trimestres communs exploitables : %d\n", n_obs))
   
   # Condition de robustesse : au moins 8 observations pour un VAR bivarié d'ordre 1
   if (n_obs >= 8) {
@@ -926,7 +923,7 @@ for (paire in paires_analyse) {
     if (!is.null(sel_biv)) {
       p_opt <- max(1, as.numeric(sel_biv$selection["AIC(n)"]))
     }
-    cat(sprintf("  → Ordre sélectionné (AIC) : p = %d\n", p_opt))
+    cat(sprintf("  Ordre sélectionné (AIC) : p = %d\n", p_opt))
     
     # 3. Estimation du modèle VAR Bivarié
     var_biv <- tryCatch(
@@ -941,8 +938,8 @@ for (paire in paires_analyse) {
       # 4. Diagnostic de stabilité (Racines de la matrice compagnon)
       racines_biv <- roots(var_biv)
       stable_flag <- all(racines_biv < 1)
-      cat(sprintf("  → Stabilité du système : %s (Racine max = %.4f)\n", 
-                  ifelse(stable_flag, "✔ Stable", "⚠️ Instable !"), max(racines_biv)))
+      cat(sprintf("   Stabilité du système : %s (Racine max = %.4f)\n", 
+                  ifelse(stable_flag, " Stable", " Instable !"), max(racines_biv)))
       
       # 5. Test de Causalité au sens de Granger (Sens de transmission du risque)
       cat("\n  [TEST DE CAUSALITÉ DE GRANGER]\n")
@@ -962,12 +959,12 @@ for (paire in paires_analyse) {
       # 6. Fonctions de Réponse Impulsionnelle (IRF) — Analyse de propagation
       cat("\n  [FONCTIONS DE RÉPONSE IMPULSIONNELLE]\n")
       
-      # Choc pays 1 → pays 2
+      # Choc pays 1 --> pays 2
       irf_1to2 <- tryCatch(
         irf(var_biv, impulse = paire$name1, response = paire$name2, n.ahead = 8, boot = FALSE),
         error = function(e) NULL
       )
-      # Choc pays 2 → pays 1
+      # Choc pays 2 --> pays 1
       irf_2to1 <- tryCatch(
         irf(var_biv, impulse = paire$name2, response = paire$name1, n.ahead = 8, boot = FALSE),
         error = function(e) NULL
@@ -1032,8 +1029,8 @@ ecart_type_rachats=sd(df_rachats$nbr_parts_rachats)
 LaR_Parts <- moyenne_parts_rachats + (ecart_type_rachats * 2.33)
 LaR_Montant_FCFA   <- LaR_Parts * VL_PAR_PART_APPROX
 cat(paste0(rep("-", 55), collapse = ""), "\n")
-cat(sprintf("  🔥 LaR_Parts (Moyenne + 2.33*σ) : %.4f parts\n", LaR_Parts))
-cat(sprintf("  💰 BESOIN DE LIQUIDITÉ EN FCFA  : %s FCFA\n", 
+cat(sprintf("  LaR_Parts (Moyenne + 2.33*σ) : %.4f parts\n", LaR_Parts))
+cat(sprintf("  BESOIN DE LIQUIDITÉ EN FCFA  : %s FCFA\n", 
             format(round(LaR_Montant_FCFA), big.mark = " ")))
 cat(paste0(rep("-", 55), collapse = ""), "\n")
 
@@ -1121,7 +1118,6 @@ g_gap <- ggplot(gap_df, aes(x = Semaine)) +
   geom_col(aes(y = Rachats_P50, fill = "Rachats attendus (P50)"), alpha = 0.6, width = 0.4) +
   
   # Graphique de l'avant-plan : Scénario de crise de rachat (LaR P99)
-  # Correction : Utilisation d'un code Hexadécimal sécurisé "#DC143C" à la place de "crimson"
   geom_col(aes(y = Rachats_P99, fill = "Rachats max stressés (LaR P99)"), alpha = 0.3, width = 0.4) +
   
   # Ligne de démarcation de l'équilibre de trésorerie (Solde Zéro)
@@ -1131,7 +1127,7 @@ g_gap <- ggplot(gap_df, aes(x = Semaine)) +
   scale_fill_manual(values = c(
     "Coupons entrants (Actif)"       = "darkblue",
     "Rachats attendus (P50)"         = "orange",
-    "Rachats max stressés (LaR P99)" = "#DC143C" # Code Hex pour un rouge profond/crimson stable
+    "Rachats max stressés (LaR P99)" = "#DC143C" 
   ), name = "Composantes ALM") +
   
   labs(
@@ -1211,8 +1207,8 @@ print(perf_pays %>%
         dplyr::mutate(
           Valorisation_tot  = round(Valorisation_tot),
           Poids             = round(Poids * 100, 2),            # Affichage en %
-          Taux_facial_moy   = round(Taux_facial_moy * 100, 3),  # Affichage en %
-          Contrib_taux      = round(Contrib_taux, 4),           # Affichage en %
+          Taux_facial_moy   = round(Taux_facial_moy * 100, 3), 
+          Contrib_taux      = round(Contrib_taux, 4),          
           DM_approx         = round(DM_approx, 2)
         ),
       row.names = FALSE)
@@ -1229,9 +1225,9 @@ dm_composite   <- weighted.mean(perf_pays$DM_approx, perf_pays$Valorisation_tot,
 # Détermination du montant total sous gestion (encours obligataire global)
 total_obligations_portefeuille <- sum(perf_pays$Valorisation_tot, na.rm = TRUE)
 
-cat(sprintf("  📊 RENDEMENT COMPOSITE DU PORTEFEUILLE : %.4f%%\n", taux_composite))
-cat(sprintf("  ⏳ DURATION MODIFIÉE COMPOSITE        : %.2f ans\n", dm_composite))
-cat(sprintf("  📉 SENSIBILITÉ DU FONDS À 1 BP (FCFA)   : %s FCFA\n",
+cat(sprintf("  RENDEMENT COMPOSITE DU PORTEFEUILLE : %.4f%%\n", taux_composite))
+cat(sprintf("  DURATION MODIFIÉE COMPOSITE        : %.2f ans\n", dm_composite))
+cat(sprintf("  SENSIBILITÉ DU FONDS À 1 BP (FCFA)   : %s FCFA\n",
             format(round(dm_composite * total_obligations_portefeuille / 10000), big.mark = " ")))
 cat(paste0(rep("-", 65), collapse = ""), "\n\n")
 
@@ -1249,10 +1245,9 @@ g_contrib <- ggplot(perf_pays, aes(x = reorder(Emetteur_grp, Contrib_taux), y = 
   
   # Inversion des axes pour une lecture naturelle sous forme de classement (Benchmark)
   coord_flip() +
-  
-  # Thème visuel épuré
+
   theme_minimal() +
-  scale_fill_brewer(palette = "Set2") + # Palette de couleurs professionnelles et distinctes
+  scale_fill_brewer(palette = "Set2") + 
   labs(
     title    = "Structure de la Performance : Contribution par Pays Émetteur",
     subtitle = sprintf("Rendement embarqué global du portefeuille : %.4f%%", taux_composite),
@@ -1356,7 +1351,7 @@ cat(sprintf("  Espèces disponibles     : %s FCFA\n",
 couverture_especes <- ESPECES_FCFA / montant_remboursement
 cat(sprintf("  Ratio de couverture     : %.2fx  %s\n",
             couverture_especes,
-            ifelse(couverture_especes >= 1, "✔ Couvert", "⚠️  Déficit !")))
+            ifelse(couverture_especes >= 1, "Couvert", " ! Déficit !")))
 
 
 # ─── 5.3 Double Choc combiné ─────────────────────────────────────────────────
@@ -1395,7 +1390,7 @@ cat(sprintf("    Remboursements     : -%s FCFA\n",
 solde_treso <- ESPECES_FCFA + perte_totale_actif - montant_remboursement
 cat(sprintf("    Solde de trésorerie: %s FCFA  %s\n",
             format(round(solde_treso), big.mark = " "),
-            ifelse(solde_treso >= 0, "✔ Positif", "⚠️  DÉFICIT !")))
+            ifelse(solde_treso >= 0, " Positif", "!  DÉFICIT !")))
 
 # Quel titre céder en priorité pour faire face (moindre moins-value) ?
 cat("\n  Stratégie de cession pour faire face aux rachats :\n")
@@ -1449,16 +1444,16 @@ if ("Cameroun_OTA_5a" %in% names(resultats_garch)) {
 cat("\n  ── 5.5 Conformité COSUMAF — Division des risques ──\n\n")
 
 LIMITE_COSUMAF_EMETTEUR <- 0.35  # 35% max par émetteur
-SEUIL_ALERTE            <- 0.28  # Orange dès 28%
+SEUIL_ALERTE            <- 0.28 
 
 conformite_df <- resume_emetteur %>%
   dplyr::mutate(
     Poids_decimal = Valorisation / sum(Valorisation),
     Poids_pct     = Poids_decimal * 100,
     Statut = case_when(
-      Poids_decimal > LIMITE_COSUMAF_EMETTEUR ~ "🔴 ALERTE (> 35%)",
-      Poids_decimal > SEUIL_ALERTE             ~ "🟡 SURVEILLANCE (> 28%)",
-      TRUE                                      ~ "🟢 Conforme"
+      Poids_decimal > LIMITE_COSUMAF_EMETTEUR ~ " ALERTE (> 35%)",
+      Poids_decimal > SEUIL_ALERTE             ~ " SURVEILLANCE (> 28%)",
+      TRUE                                      ~ " Conforme"
     ),
     Reduction_requise_FCFA = pmax(0,
                                   (Poids_decimal - LIMITE_COSUMAF_EMETTEUR) *
@@ -1501,9 +1496,9 @@ g_cosumaf <- ggplot(conformite_df,
   annotate("text", x = 0.5, y = 36, label = "Limite COSUMAF 35%",
            colour = "red", hjust = 0, size = 3.5) +
   scale_fill_manual(
-    values = c("🔴 ALERTE (> 35%)"       = "#CC3333",
-               "🟡 SURVEILLANCE (> 28%)" = "#FF9900",
-               "🟢 Conforme"             = "#339933"),
+    values = c(" ALERTE (> 35%)"       = "#CC3333",
+               " SURVEILLANCE (> 28%)" = "#FF9900",
+               " Conforme"             = "#339933"),
     name = "Statut"
   ) +
   labs(title    = "Conformité COSUMAF — Division des risques par émetteur",
@@ -1518,8 +1513,6 @@ print(g_cosumaf)
 ################################################################################
 ## ÉTAPE 6 — EXPORT DES RÉSULTATS POUR L'OUTIL VBA
 ##
-##  Production de fichiers CSV lisibles par le module ImporterCoefficientsR()
-##  du COSUMAF Risk Monitor Excel.
 ################################################################################
 
 cat("\n═══════════════════════════════════════════════════════\n")
@@ -1544,7 +1537,7 @@ if (length(resultats_garch) > 0) {
   }
   
   write.csv(export_garch, "coefficients_garch.csv", row.names = FALSE)
-  cat("  ✔ Fichier créé : coefficients_garch.csv\n")
+  cat("   Fichier créé : coefficients_garch.csv\n")
   cat("    (À importer via le bouton 'ImporterCoefficientsR' dans Excel)\n")
 }
 
@@ -1580,7 +1573,7 @@ export_alm <- data.frame(
 )
 
 write.csv(export_alm, "coefficients_var.csv", row.names = FALSE)
-cat("  ✔ Fichier créé : coefficients_var.csv\n")
+cat("  Fichier créé : coefficients_var.csv\n")
 
 
 # ─── 6.3 Export stress test ──────────────────────────────────────────────────
@@ -1619,7 +1612,7 @@ export_poids <- conformite_df %>%
   )
 
 write.csv(export_poids, "resultats_COSUMAF_Poids.csv", row.names = FALSE)
-cat("  ✔ Fichier créé : resultats_COSUMAF_Poids.csv\n")
+cat("   Fichier créé : resultats_COSUMAF_Poids.csv\n")
 
 
 # ─── 6.5 Export prévisions de flux (pour le Dashboard VBA) ─────────────────
@@ -1634,6 +1627,6 @@ export_flux <- data.frame(
 )
 
 write.csv(export_flux, "resultats_Flux_Previsions.csv", row.names = FALSE)
-cat("  ✔ Fichier créé : resultats_Flux_Previsions.csv\n")
+cat("   Fichier créé : resultats_Flux_Previsions.csv\n")
 cat("\n  → Ces 5 fichiers CSV sont prêts à être importés dans\n")
 cat("    le COSUMAF Risk Monitor via le bouton 'ImporterCoefficientsR'.\n")
